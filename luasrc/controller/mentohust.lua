@@ -2,23 +2,22 @@ module("luci.controller.mentohust", package.seeall)
 
 function index()
     entry({"admin", "services", "mentohust"}, 
-          alias("admin", "services", "mentohust", "general"), 
+          alias("admin", "services", "mentohust", "config"), 
           _("MentoHUST"), 60).dependent = false
     
+    -- 状态页面 (指向 View)
     entry({"admin", "services", "mentohust", "status"}, 
           template("mentohust/status"), _("运行状态"), 1)
     
-    entry({"admin", "services", "mentohust", "general"}, 
-          cbi("mentohust/general"), _("参数设置"), 2)
+    -- 配置页面 (指向 CBI Model)
+    -- 修改点：这里指向 mentohust/config，对应下面的 config.lua
+    entry({"admin", "services", "mentohust", "config"}, 
+          cbi("mentohust/config"), _("参数设置"), 2)
     
-    entry({"admin", "services", "mentohust", "get_log"}, 
-          call("action_get_log"))
-    
-    entry({"admin", "services", "mentohust", "get_status"}, 
-          call("action_get_status"))
-    
-    entry({"admin", "services", "mentohust", "service_action"}, 
-          call("action_service"))
+    -- 后端接口
+    entry({"admin", "services", "mentohust", "get_log"}, call("action_get_log"))
+    entry({"admin", "services", "mentohust", "get_status"}, call("action_get_status"))
+    entry({"admin", "services", "mentohust", "service_action"}, call("action_service"))
 end
 
 function action_get_log()
@@ -30,22 +29,16 @@ end
 function action_get_status()
     local running = luci.sys.call("pgrep mentohust >/dev/null") == 0
     local enabled = luci.sys.init.enabled("mentohust")
-    
     luci.http.prepare_content("application/json")
-    luci.http.write_json({
-        running = running,
-        enabled = enabled
-    })
+    luci.http.write_json({running = running, enabled = enabled})
 end
 
 function action_service()
     local action = luci.http.formvalue("action")
     local result = false
-    
     if action == "start" or action == "stop" or action == "restart" or action == "enable" or action == "disable" then
         result = luci.sys.call("/etc/init.d/mentohust " .. action) == 0
     end
-    
     luci.http.prepare_content("application/json")
     luci.http.write_json({success = result})
 end

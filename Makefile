@@ -1,7 +1,7 @@
 include $(TOPDIR)/rules.mk
 
 PKG_NAME:=luci-app-mentohust
-PKG_VERSION:=1.0.3
+PKG_VERSION:=1.0.12
 PKG_RELEASE:=1
 
 PKG_LICENSE:=MIT

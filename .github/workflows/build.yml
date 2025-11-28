@@ -56,10 +56,11 @@ jobs:
       run: |
         cd sdk
         echo "开始编译..."
-        # 确保如果 make 失败，整个步骤也会标记为失败
         set -o pipefail
-        # 将标准输出和错误输出同时保存到 build.log，并在屏幕显示
-        make package/luci-app-mentohust/compile V=s -j$(nproc) 2>&1 | tee build.log
+        make package/luci-app-mentohust/compile V=s -j$(nproc) 2>&1 | tee build.log || {
+          echo "❌ 编译失败！"
+          exit 1
+        }
 
     - name: Find IPK
       id: find_ipk

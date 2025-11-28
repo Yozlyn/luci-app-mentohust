@@ -1,19 +1,15 @@
 module("luci.controller.mentohust", package.seeall)
 
 function index()
-    if not nixio.fs.access("/etc/config/mentohust") then
-        return
-    end
-
     entry({"admin", "services", "mentohust"}, 
-          alias("admin", "services", "mentohust", "status"), 
+          alias("admin", "services", "mentohust", "general"), 
           _("MentoHUST"), 60).dependent = false
     
     entry({"admin", "services", "mentohust", "status"}, 
-          template("mentohust/status"), _("状态"), 1)
+          template("mentohust/status"), _("运行状态"), 1)
     
-    entry({"admin", "services", "mentohust", "config"}, 
-          cbi("mentohust/config"), _("配置"), 2)
+    entry({"admin", "services", "mentohust", "general"}, 
+          cbi("mentohust/general"), _("参数设置"), 2)
     
     entry({"admin", "services", "mentohust", "get_log"}, 
           call("action_get_log"))
@@ -26,7 +22,7 @@ function index()
 end
 
 function action_get_log()
-    local log = luci.sys.exec("tail -n 100 /tmp/mentohust.log 2>/dev/null || echo '暂无日志或文件不存在'")
+    local log = luci.sys.exec("tail -n 100 /tmp/mentohust.log 2>/dev/null || echo '暂无日志'")
     luci.http.prepare_content("text/plain; charset=utf-8")
     luci.http.write(log)
 end

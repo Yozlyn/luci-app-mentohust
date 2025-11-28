@@ -1,0 +1,85 @@
+#!/bin/sh /etc/rc.common
+
+START=99
+USE_PROCD=1
+
+PROG=/usr/sbin/mentohust
+LOGFILE="/tmp/mentohust.log"
+PID_FILE="/tmp/mentohust.pid"
+
+gen_config() {
+    local enabled
+    config_get_bool enabled default enabled 0
+    [ "$enabled" -eq 0 ] && return 1
+
+    local username password nic ip mask gateway dns pinghost timeout echointerval restartwait startmode dhcpmode version
+
+    config_get username default username
+    config_get password default password
+    config_get nic default nic "eth0"
+    config_get ip default ip "0.0.0.0"
+    config_get mask default mask "255.255.0.0"
+    config_get gateway default gateway "0.0.0.0"
+    config_get dns default dns "0.0.0.0"
+    config_get pinghost default pinghost "0.0.0.0"
+    config_get timeout default timeout "8"
+    config_get echointerval default echointerval "30"
+    config_get restartwait default restartwait "15"
+    config_get startmode default startmode "0"
+    config_get dhcpmode default dhcpmode "0"
+    config_get version default version "0.00"
+
+    # 生成配置并退出 (-w -k)
+    $PROG -u"$username" -p"$password" -n"$nic" \
+          -i"$ip" -m"$mask" -g"$gateway" -s"$dns" \
+          -o"$pinghost" -t"$timeout" -e"$echointerval" \
+          -r"$restartwait" -a"$startmode" -d"$dhcpmode" \
+          -b0 -v"$version" -w -k >/dev/null 2>&1
+
+    IFACE="$nic"
+    return 0
+}
+
+boot() {
+    config_load mentohust
+    gen_config || return 0
+    
+    local if_timeout=30 count=0
+    echo "[$(date)] Boot check started for $IFACE" > $LOGFILE
+    
+    while [ ! -d "/sys/class/net/$IFACE" ] && [ $count -lt $if_timeout ]; do
+        sleep 1; count=$((count + 1))
+    done
+    
+    if [ ! -d "/sys/class/net/$IFACE" ]; then
+        echo "[$(date)] ERROR: $IFACE not found" >> $LOGFILE
+        return 1
+    fi
+    
+    start
+}
+
+start_service() {
+    config_load mentohust
+    gen_config || return 0
+    
+    [ ! -d "/sys/class/net/$IFACE" ] && return 1
+    
+    procd_open_instance
+    # 直接运行 mentohust，自动读取默认路径配置
+    procd_set_param command /bin/sh -c "exec $PROG >> $LOGFILE 2>&1"
+    procd_set_param respawn 3600 5 0
+    procd_set_param pidfile $PID_FILE
+    procd_set_param netdev $IFACE
+    procd_close_instance
+}
+
+stop_service() {
+    echo "[$(date)] Stopped" >> $LOGFILE
+}
+
+reload_service() {
+    stop
+    sleep 1
+    start
+}

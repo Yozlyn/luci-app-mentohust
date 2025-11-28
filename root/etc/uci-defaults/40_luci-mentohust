@@ -1,5 +1,7 @@
 #!/bin/sh
-[ -f /usr/sbin/mentohust ] && chmod +x /usr/sbin/mentohust
-rm -rf /tmp/luci-modulecache/
-rm -f /tmp/luci-indexcache
-exit 0
+
+uci -q batch <<-EOF >/dev/null
+	delete ucitrack.@mentohust[0]
+	add ucitrack mentohust
+	set ucitrack.@mentohust[-1].init=mentohust
+	commit ucitrack

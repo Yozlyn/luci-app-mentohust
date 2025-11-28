@@ -12,6 +12,7 @@ LUCI_DEPENDS:=+luci-base +mentohust
 LUCI_PKGARCH:=all
 
 include $(TOPDIR)/feeds/luci/luci.mk
+
 define Package/luci-app-mentohust/install
 	$(call Package/luci-app-mentohust/install/default,$(1))
 	$(INSTALL_DIR) $(1)/etc/init.d

@@ -1,0 +1,5 @@
+#!/bin/sh
+[ -f /usr/sbin/mentohust ] && chmod +x /usr/sbin/mentohust
+rm -rf /tmp/luci-modulecache/
+rm -f /tmp/luci-indexcache
+exit 0

@@ -1,0 +1,6 @@
+/bin/
+/obj/
+/tmp/
+*.ipk
+.DS_Store
+.project

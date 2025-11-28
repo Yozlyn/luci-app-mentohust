@@ -1,0 +1,101 @@
+name: Build luci-app-mentohust IPK
+
+on:
+  push:
+    branches: [ main, master ]
+    tags: ['v*']
+  pull_request:
+  workflow_dispatch:
+
+jobs:
+  build:
+    name: Build IPK
+    runs-on: ubuntu-latest
+    
+    steps:
+    - name: Checkout Code
+      uses: actions/checkout@v4
+
+    - name: Prepare Environment
+      run: |
+        sudo apt-get update
+        sudo apt-get install -y build-essential libncurses5-dev gawk git gettext libssl-dev xsltproc rsync wget unzip python3
+
+    - name: Cache SDK File
+      id: cache-sdk
+      uses: actions/cache@v4
+      with:
+        path: openwrt-sdk.tar.xz
+        key: openwrt-sdk-23.05.5-x86-64
+
+    - name: Download OpenWrt SDK
+      if: steps.cache-sdk.outputs.cache-hit != 'true'
+      run: |
+        echo "Cache missed, downloading SDK..."
+        wget -O openwrt-sdk.tar.xz https://downloads.openwrt.org/releases/23.05.5/targets/x86/64/openwrt-sdk-23.05.5-x86-64_gcc-12.3.0_musl.Linux-x86_64.tar.xz
+
+    - name: Extract SDK
+      run: |
+        mkdir sdk
+        tar -xf openwrt-sdk.tar.xz -C sdk --strip-components=1
+        echo "SDK 准备完成"
+
+    - name: Prepare Feeds & Package
+      run: |
+        cd sdk
+        ./scripts/feeds update -a
+        ./scripts/feeds install -a
+        
+        mkdir -p package/luci-app-mentohust
+        cp -r ../Makefile ../luasrc ../root package/luci-app-mentohust/
+        
+        make defconfig
+
+    - name: Compile Package
+      id: compile
+      run: |
+        cd sdk
+        echo "开始编译..."
+        # 确保如果 make 失败，整个步骤也会标记为失败
+        set -o pipefail
+        # 将标准输出和错误输出同时保存到 build.log，并在屏幕显示
+        make package/luci-app-mentohust/compile V=s -j$(nproc) 2>&1 | tee build.log
+
+    - name: Find IPK
+      id: find_ipk
+      if: success()
+      run: |
+        IPK_FILE=$(find sdk/bin/packages/ -name "luci-app-mentohust*.ipk" | head -n 1)
+        
+        if [ -z "$IPK_FILE" ]; then
+          echo "Error: IPK file not found!"
+          find sdk/bin/ -name "*.ipk"
+          exit 1
+        fi
+        
+        echo "ipk_file=$IPK_FILE" >> $GITHUB_OUTPUT
+        echo "Found: $IPK_FILE"
+
+    - name: Upload IPK Artifact
+      if: success()
+      uses: actions/upload-artifact@v4
+      with:
+        name: luci-app-mentohust-ipk
+        path: ${{ steps.find_ipk.outputs.ipk_file }}
+        compression-level: 0
+
+    - name: Upload Build Logs
+      if: always() 
+      uses: actions/upload-artifact@v4
+      with:
+        name: build-logs
+        path: |
+          sdk/build.log
+          sdk/.config
+        retention-days: 3
+
+    - name: Release
+      if: startsWith(github.ref, 'refs/tags/') && success()
+      uses: softprops/action-gh-release@v2
+      with:
+        files: ${{ steps.find_ipk.outputs.ipk_file }}

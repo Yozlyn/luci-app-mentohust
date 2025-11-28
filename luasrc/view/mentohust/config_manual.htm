@@ -1,0 +1,16 @@
+<div class="cbi-section">
+    <h3>快速配置指南</h3>
+    <div class="cbi-section-descr">
+        由于 MentoHUST 参数较多，建议通过 SSH 进行初始配置。
+    </div>
+    <pre style="background:#f5f5f5; padding:15px; border:1px solid #ccc; border-radius:4px;">
+# 1. SSH 登录路由器后运行配置向导：
+mentohust -u用户名 -p密码 -n网卡名 -w
+
+# 例如 (Cudy TR3000 wan口通常为 eth1 或 eth0，请根据实际情况)：
+mentohust -u2021001 -p123456 -neth1 -w
+
+# 2. 配置文件路径：
+/etc/mentohust.conf
+    </pre>
+</div>

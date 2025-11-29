@@ -1,5 +1,4 @@
 #!/bin/sh
-
 uci -q batch <<-EOF >/dev/null
 	delete ucitrack.@mentohust[0]
 	add ucitrack mentohust

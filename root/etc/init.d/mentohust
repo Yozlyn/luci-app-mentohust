@@ -6,80 +6,86 @@ USE_PROCD=1
 PROG=/usr/sbin/mentohust
 LOGFILE="/tmp/mentohust.log"
 PID_FILE="/tmp/mentohust.pid"
+CONF_FILE="/etc/mentohust.conf"
+IFACE="eth0"
 
-gen_config() {
-    local enabled
-    config_get_bool enabled default enabled 0
-    [ "$enabled" -eq 0 ] && return 1
-
-    local username password nic ip mask gateway dns pinghost timeout echointerval restartwait startmode dhcpmode version
-
-    config_get username default username
-    config_get password default password
-    config_get nic default nic "eth0"
-    config_get ip default ip "0.0.0.0"
-    config_get mask default mask "255.255.0.0"
-    config_get gateway default gateway "0.0.0.0"
-    config_get dns default dns "0.0.0.0"
-    config_get pinghost default pinghost "0.0.0.0"
-    config_get timeout default timeout "8"
-    config_get echointerval default echointerval "30"
-    config_get restartwait default restartwait "15"
-    config_get startmode default startmode "0"
-    config_get dhcpmode default dhcpmode "0"
-    config_get version default version "0.00"
-
-    # 生成配置并退出 (-w -k)
-    $PROG -u"$username" -p"$password" -n"$nic" \
-          -i"$ip" -m"$mask" -g"$gateway" -s"$dns" \
-          -o"$pinghost" -t"$timeout" -e"$echointerval" \
-          -r"$restartwait" -a"$startmode" -d"$dhcpmode" \
-          -b0 -v"$version" -w -k >/dev/null 2>&1
-
-    IFACE="$nic"
-    return 0
+get_conf_val() {
+    local key="$1"
+    local line=$(grep -i "^${key}=" "$CONF_FILE" 2>/dev/null | grep -v '^[[:space:]]*[#;]' | tail -n 1)
+    local val=$(echo "$line" | cut -d= -f2)
+    local cleaned_val=$(echo "$val" | sed 's/[ \t\r]//g')
+    
+    echo "$cleaned_val"
 }
 
+# 动态读取配置中的网卡名
+if [ -f "$CONF_FILE" ]; then
+    nic_val=$(get_conf_val "Nic")
+    [ -n "$nic_val" ] && IFACE="$nic_val"
+fi
+
 boot() {
-    config_load mentohust
-    gen_config || return 0
-    
     local if_timeout=30 count=0
-    echo "[$(date)] Boot check started for $IFACE" > $LOGFILE
     
+    echo "[$(date)] Boot check started for $IFACE" >> $LOGFILE
+    
+    # 等待网卡
     while [ ! -d "/sys/class/net/$IFACE" ] && [ $count -lt $if_timeout ]; do
         sleep 1; count=$((count + 1))
     done
-    
     if [ ! -d "/sys/class/net/$IFACE" ]; then
         echo "[$(date)] ERROR: $IFACE not found" >> $LOGFILE
         return 1
+    fi
+    
+    # 等待网线连接
+    count=0
+    while [ $count -lt 15 ]; do
+        carrier=$(cat /sys/class/net/$IFACE/carrier 2>/dev/null)
+        [ "$carrier" = "1" ] && break
+        sleep 1; count=$((count + 1))
+    done
+    echo "[$(date)] Link detected" >> $LOGFILE
+    
+    # 等待 IP 地址
+    echo "[$(date)] Waiting for IP on $IFACE..." >> $LOGFILE
+    count=0
+    ip_ready=0
+    while [ $count -lt 20 ]; do
+        if ifconfig "$IFACE" | grep -q "inet "; then
+            ip_ready=1
+            break
+        fi
+        sleep 1
+        count=$((count + 1))
+    done
+    
+    if [ $ip_ready -eq 1 ]; then
+        echo "[$(date)] IP address ready after ${count}s. Starting..." >> $LOGFILE
+    else
+        echo "[$(date)] WARNING: No IP yet after 20s. Starting anyway (maybe Pre-Auth DHCP)." >> $LOGFILE
     fi
     
     start
 }
 
 start_service() {
-    config_load mentohust
-    gen_config || return 0
-    
     [ ! -d "/sys/class/net/$IFACE" ] && return 1
-    
+    USERNAME=$(get_conf_val "Username")
+    if [ -z "$USERNAME" ]; then
+        echo "[$(date)] ERROR: Username empty. Aborting start." >> $LOGFILE
+        return 1
+    fi
+
     procd_open_instance
-    # 直接运行 mentohust，自动读取默认路径配置
     procd_set_param command /bin/sh -c "exec $PROG >> $LOGFILE 2>&1"
-    procd_set_param respawn 3600 5 0
+    procd_set_param respawn 3600 5 0 
     procd_set_param pidfile $PID_FILE
     procd_set_param netdev $IFACE
     procd_close_instance
 }
 
 stop_service() {
-    echo "[$(date)] Stopped" >> $LOGFILE
-}
-
-reload_service() {
-    stop
-    sleep 1
-    start
+    echo "[$(date)] MentoHUST stopped" >> $LOGFILE
+    rm -f $PID_FILE
 }

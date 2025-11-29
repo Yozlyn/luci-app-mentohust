@@ -6,6 +6,17 @@ on:
     tags: ['v*']
   pull_request:
   workflow_dispatch:
+    inputs:
+      create_release:
+        description: '创建Release'
+        required: false
+        type: boolean
+        default: false
+      release_tag:
+        description: 'Release标签'
+        required: false
+        type: string
+        default: ''
 
 jobs:
   build:
@@ -38,7 +49,7 @@ jobs:
       run: |
         mkdir sdk
         tar -xf openwrt-sdk.tar.xz -C sdk --strip-components=1
-        echo "SDK 准备完成"
+        echo "SDK准备完成"
 
     - name: Prepare Feeds & Package
       run: |
@@ -58,30 +69,51 @@ jobs:
         echo "开始编译..."
         set -o pipefail
         make package/luci-app-mentohust/compile V=s -j$(nproc) 2>&1 | tee build.log || {
-          echo "❌ 编译失败！"
+          echo " 编译失败！"
           exit 1
         }
 
-    - name: Find IPK
+    - name: Find and Rename IPK
       id: find_ipk
       if: success()
       run: |
         IPK_FILE=$(find sdk/bin/packages/ -name "luci-app-mentohust*.ipk" | head -n 1)
-        
         if [ -z "$IPK_FILE" ]; then
           echo "Error: IPK file not found!"
           find sdk/bin/ -name "*.ipk"
           exit 1
         fi
         
-        echo "ipk_file=$IPK_FILE" >> $GITHUB_OUTPUT
+        PKG_VERSION=$(grep "^PKG_VERSION:=" Makefile | cut -d'=' -f2)
+        PKG_RELEASE=$(grep "^PKG_RELEASE:=" Makefile | cut -d'=' -f2)
+        MAKEFILE_VERSION="${PKG_VERSION}-${PKG_RELEASE}"
+        
+        if [ "${{ github.event_name }}" == "workflow_dispatch" ] && [ -n "${{ inputs.release_tag }}" ]; then
+          VERSION="${{ inputs.release_tag }}"
+        elif [[ "${{ github.ref }}" == refs/tags/* ]]; then
+          VERSION="${{ github.ref_name }}"
+        else
+          VERSION="${MAKEFILE_VERSION}-dev-$(date +%Y%m%d)"
+        fi
+        
+        NEW_NAME="luci-app-mentohust_all_${VERSION}.ipk"
+        NEW_PATH="$(dirname $IPK_FILE)/$NEW_NAME"
+        
+        cp "$IPK_FILE" "$NEW_PATH"
+        
+        echo "ipk_file=$NEW_PATH" >> $GITHUB_OUTPUT
+        echo "ipk_name=$NEW_NAME" >> $GITHUB_OUTPUT
+        echo "version=$VERSION" >> $GITHUB_OUTPUT
+        echo "makefile_version=$MAKEFILE_VERSION" >> $GITHUB_OUTPUT
         echo "Found: $IPK_FILE"
+        echo "Renamed to: $NEW_PATH"
+        echo "Makefile Version: $MAKEFILE_VERSION"
 
     - name: Upload IPK Artifact
       if: success()
       uses: actions/upload-artifact@v4
       with:
-        name: luci-app-mentohust-ipk
+        name: luci-app-mentohust-${{ steps.find_ipk.outputs.version }}
         path: ${{ steps.find_ipk.outputs.ipk_file }}
         compression-level: 0
 
@@ -95,8 +127,46 @@ jobs:
           sdk/.config
         retention-days: 3
 
-    - name: Release
+    - name: Release (Tag Push)
       if: startsWith(github.ref, 'refs/tags/') && success()
       uses: softprops/action-gh-release@v2
       with:
         files: ${{ steps.find_ipk.outputs.ipk_file }}
+        body: |
+          ## luci-app-mentohust ${{ steps.find_ipk.outputs.version }}
+          
+          **文件名**: `${{ steps.find_ipk.outputs.ipk_name }}`
+          
+          ### 安装方法
+          ```bash
+          opkg install ${{ steps.find_ipk.outputs.ipk_name }}
+          ```
+        generate_release_notes: true
+
+    - name: Create Release Tag
+      if: github.event_name == 'workflow_dispatch' && inputs.create_release && inputs.release_tag != '' && success()
+      run: |
+        git config user.name "github-actions[bot]"
+        git config user.email "github-actions[bot]@users.noreply.github.com"
+        git tag -a "${{ inputs.release_tag }}" -m "Release ${{ inputs.release_tag }}"
+        git push origin "${{ inputs.release_tag }}"
+
+    - name: Release (Manual Trigger)
+      if: github.event_name == 'workflow_dispatch' && inputs.create_release && inputs.release_tag != '' && success()
+      uses: softprops/action-gh-release@v2
+      with:
+        tag_name: ${{ inputs.release_tag }}
+        name: ${{ inputs.release_tag }}
+        files: ${{ steps.find_ipk.outputs.ipk_file }}
+        body: |
+          ## luci-app-mentohust ${{ inputs.release_tag }}
+          
+          **文件名**: `${{ steps.find_ipk.outputs.ipk_name }}`
+          
+          ### 安装方法
+          ```bash
+          opkg install ${{ steps.find_ipk.outputs.ipk_name }}
+          ```
+        generate_release_notes: true
+        draft: false
+        prerelease: false

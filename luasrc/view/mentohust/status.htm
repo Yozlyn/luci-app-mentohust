@@ -1,7 +1,5 @@
 <%+header%>
-
 <style>
-/* 旧版浏览器兼容性，使用更通用的样式 */
 .mentohust-log {
     background-color: #1e1e1e;
     color: #d4d4d4;
@@ -12,7 +10,7 @@
     line-height: 1.5;
     white-space: pre-wrap;
     word-wrap: break-word;
-    height: 350px;
+    height: 450px;
     overflow-y: scroll;
     border: 1px solid #444;
 }
@@ -26,15 +24,26 @@
 }
 .status-green { background-color: #4caf50; box-shadow: 0 0 5px #4caf50; }
 .status-red { background-color: #f44336; box-shadow: 0 0 5px #f44336; }
+
+.cbi-button-clear {
+    background-color: #e7604a; 
+    color: #fff;
+    border: 1px solid #d44a36;
+}
+.cbi-button-clear:hover {
+    background-color: #d44a36;
+}
+.cbi-button-row {
+    display: flex;
+    gap: 10px;
+    padding: 10px 0;
+    align-items: center;
+}
 </style>
-
 <h2 name="content"><%:MentoHUST 802.1x 认证%></h2>
-
 <div class="cbi-map">
-    <!-- 状态概览 -->
     <fieldset class="cbi-section">
         <legend><%:运行状态%></legend>
-        
         <div class="cbi-section-node">
             <div class="cbi-value">
                 <label class="cbi-value-title"><%:服务状态%></label>
@@ -43,7 +52,6 @@
                     <span id="status_text" style="font-weight: bold; vertical-align: middle;"><%:检测中...%></span>
                 </div>
             </div>
-            
             <div class="cbi-value cbi-value-last">
                 <label class="cbi-value-title"><%:开机自启%></label>
                 <div class="cbi-value-field">
@@ -52,27 +60,20 @@
             </div>
         </div>
     </fieldset>
-
-    <!-- 控制按钮 -->
     <fieldset class="cbi-section">
         <legend><%:服务控制%></legend>
         <div class="cbi-section-node">
-            <div style="padding: 10px 0;">
-                <input type="button" class="cbi-button cbi-button-apply" value="<%:启动服务%>" onclick="action('start')" />
-                <input type="button" class="cbi-button cbi-button-reset" value="<%:停止服务%>" onclick="action('stop')" />
-                <input type="button" class="cbi-button cbi-button-reload" value="<%:重启服务%>" onclick="action('restart')" />
-                <span style="margin-left: 20px; color: #999; font-size: 0.9em;">
-                    <%:提示：修改参数后请点击重启%>
-                </span>
+            <div class="cbi-button-row">
+                <button type="button" class="cbi-button cbi-button-reset" onclick="action('stop')"><%:停止服务%></button>
+                <button type="button" class="cbi-button cbi-button-reload" onclick="action('restart')"><%:重启服务%></button>
+                <button type="button" class="cbi-button cbi-button-clear" onclick="clearLog()"><%:清除日志%></button>
+                <button type="button" class="cbi-button cbi-button-link" onclick="updateLog()"><%:刷新日志%></button>
             </div>
         </div>
     </fieldset>
-
-    <!-- 日志面板 -->
     <fieldset class="cbi-section">
         <legend>
             <%:实时日志%> 
-            <input type="button" class="cbi-button cbi-button-link" value="<%:刷新%>" style="float: right; font-weight: normal;" onclick="updateLog()" />
         </legend>
         <div class="cbi-section-node">
             <textarea id="log_area" class="mentohust-log" readonly><%:正在加载日志...%></textarea>
@@ -82,15 +83,16 @@
         </div>
     </fieldset>
 </div>
-
 <script type="text/javascript">//<![CDATA[
     var statusIcon = document.getElementById('status_icon');
     var statusText = document.getElementById('status_text');
     var enabledText = document.getElementById('enabled_text');
     var logArea = document.getElementById('log_area');
-
+    function getTs() { return '?t=' + Math.random(); }
+    
+    // 状态更新
     function updateStatus() {
-        XHR.get('<%=url("admin/services/mentohust/get_status")%>', null, function(x, data) {
+        XHR.get('<%=url("admin/services/mentohust/get_status")%>' + getTs(), null, function(x, data) {
             if (data) {
                 if (data.running) {
                     statusIcon.className = 'status-indicator status-green';
@@ -101,50 +103,67 @@
                     statusText.innerHTML = '<%:已停止 (Stopped)%>';
                     statusText.style.color = '#f44336';
                 }
-                enabledText.innerHTML = data.enabled ? '<%:已启用%>' : '<%:未启用%>';
+                if (data.enabled) {
+                    enabledText.innerHTML = '<span style="color:green;font-weight:bold"><%:已启用 (Enabled)%></span>';
+                } else {
+                    enabledText.innerHTML = '<span style="color:red"><%:未启用 (Disabled)%></span>';
+                }
             }
         });
     }
 
+    // 日志更新
     function updateLog() {
-        XHR.get('<%=url("admin/services/mentohust/get_log")%>', null, function(x, data) {
+        XHR.get('<%=url("admin/services/mentohust/get_log")%>' + getTs(), null, function(x, data) {
             if (x.responseText) {
-                logArea.value = x.responseText;
-                logArea.scrollTop = logArea.scrollHeight;
+                if (logArea.value !== x.responseText) {
+                    logArea.value = x.responseText;
+                    logArea.scrollTop = logArea.scrollHeight;
+                }
             } else {
                 logArea.value = '<%:暂无日志数据%>';
             }
         });
     }
-
+    
+    // 服务操作
     function action(act) {
-        if (act === 'stop' && !confirm('<%:确认要停止 MentoHUST 服务吗？%>')) return;
+        if (act === 'stop') console.log("Attempting to stop MentoHUST service.");
         
-        statusText.innerHTML = '<%:执行中...%>';
-        statusText.style.color = '#666';
-        statusIcon.className = 'status-indicator';
-        statusIcon.style.backgroundColor = '#ccc';
+        if (act === 'restart') {
+            statusText.innerHTML = '<%:重启中...%>';
+            statusText.style.color = '#e6a23c';
+            statusIcon.style.backgroundColor = '#e6a23c';
+        }
 
-        XHR.post('<%=url("admin/services/mentohust/service_action")%>', {action: act}, function(x, data) {
+        XHR.post('<%=url("admin/services/mentohust/service_action")%>' + getTs(), {action: act}, function(x, data) {
             if (data && data.success) {
-                setTimeout(function() {
-                    updateStatus();
-                    updateLog();
-                }, 1500);
+                console.log('Service action "' + act + '" successful.');
+                setTimeout(function() { updateStatus(); updateLog(); }, 1500);
             } else {
-                alert('<%:操作失败，请检查系统日志%>');
+                console.error('Service action "' + act + '" failed.');
                 updateStatus();
             }
         });
     }
 
-    // 初始化
+    // 清除日志
+    function clearLog() {
+        console.log("Attempting to clear MentoHUST log.");
+        XHR.post('<%=url("admin/services/mentohust/clear_log")%>' + getTs(), {}, function(x, data) {
+            if (data && data.success) {
+                console.log('Log cleared successfully.');
+                updateLog();
+            } else {
+                console.error('Failed to clear log.');
+                updateLog();
+            }
+        });
+    }
+
     updateStatus();
     updateLog();
-    // 自动刷新间隔
-    window.setInterval(function() {
-        updateStatus();
-    }, 5000);
-//]]></script>
 
+    window.setInterval(function() { updateStatus(); updateLog(); }, 3000);
+//]]></script>
 <%+footer%>

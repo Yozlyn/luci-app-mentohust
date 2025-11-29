@@ -2,22 +2,19 @@ module("luci.controller.mentohust", package.seeall)
 
 function index()
     entry({"admin", "services", "mentohust"}, 
-          alias("admin", "services", "mentohust", "config"), 
+          alias("admin", "services", "mentohust", "status"), 
           _("MentoHUST"), 60).dependent = false
     
-    -- 状态页面 (指向 View)
     entry({"admin", "services", "mentohust", "status"}, 
           template("mentohust/status"), _("运行状态"), 1)
-    
-    -- 配置页面 (指向 CBI Model)
-    -- 修改点：这里指向 mentohust/config，对应下面的 config.lua
+
     entry({"admin", "services", "mentohust", "config"}, 
           cbi("mentohust/config"), _("参数设置"), 2)
     
-    -- 后端接口
     entry({"admin", "services", "mentohust", "get_log"}, call("action_get_log"))
     entry({"admin", "services", "mentohust", "get_status"}, call("action_get_status"))
     entry({"admin", "services", "mentohust", "service_action"}, call("action_service"))
+    entry({"admin", "services", "mentohust", "clear_log"}, call("action_clear_log"))
 end
 
 function action_get_log()
@@ -36,9 +33,18 @@ end
 function action_service()
     local action = luci.http.formvalue("action")
     local result = false
-    if action == "start" or action == "stop" or action == "restart" or action == "enable" or action == "disable" then
+    
+    if action == "stop" or action == "restart" then
         result = luci.sys.call("/etc/init.d/mentohust " .. action) == 0
     end
+    
+    luci.http.prepare_content("application/json")
+    luci.http.write_json({success = result})
+end
+
+function action_clear_log()
+    local log_file = "/tmp/mentohust.log"
+    local result = luci.sys.call("rm -f " .. log_file .. " && touch " .. log_file) == 0
     luci.http.prepare_content("application/json")
     luci.http.write_json({success = result})
 end

@@ -2,5 +2,6 @@
 /obj/
 /tmp/
 *.ipk
+!mentohust_0.3.1-r1_aarch64_cortex-a53.ipk
 .DS_Store
 .project

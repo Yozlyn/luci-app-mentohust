@@ -1,6 +1,32 @@
 #!/bin/sh
-uci -q batch <<-EOF >/dev/null
+
+uci -q get mentohust.default >/dev/null || uci set mentohust.default='mentohust'
+uci -q get mentohust.default.enabled >/dev/null || uci set mentohust.default.enabled='0'
+uci -q get mentohust.default.username >/dev/null || uci set mentohust.default.username=''
+uci -q get mentohust.default.password >/dev/null || uci set mentohust.default.password=''
+uci -q get mentohust.default.nic >/dev/null || uci set mentohust.default.nic='eth0'
+uci -q get mentohust.default.ip >/dev/null || uci set mentohust.default.ip='0.0.0.0'
+uci -q get mentohust.default.mask >/dev/null || uci set mentohust.default.mask='0.0.0.0'
+uci -q get mentohust.default.gateway >/dev/null || uci set mentohust.default.gateway='0.0.0.0'
+uci -q get mentohust.default.dns >/dev/null || uci set mentohust.default.dns='0.0.0.0'
+uci -q get mentohust.default.pinghost >/dev/null || uci set mentohust.default.pinghost='0.0.0.0'
+uci -q get mentohust.default.timeout >/dev/null || uci set mentohust.default.timeout='8'
+uci -q get mentohust.default.echointerval >/dev/null || uci set mentohust.default.echointerval='30'
+uci -q get mentohust.default.restartwait >/dev/null || uci set mentohust.default.restartwait='15'
+uci -q get mentohust.default.startmode >/dev/null || uci set mentohust.default.startmode='0'
+uci -q get mentohust.default.dhcpmode >/dev/null || uci set mentohust.default.dhcpmode='1'
+uci -q get mentohust.default.daemonmode >/dev/null || uci set mentohust.default.daemonmode='0'
+uci -q get mentohust.default.shownotify >/dev/null || uci set mentohust.default.shownotify='0'
+uci -q get mentohust.default.version >/dev/null || uci set mentohust.default.version='0.00'
+uci -q get mentohust.default.datafile >/dev/null || uci set mentohust.default.datafile='/etc/mentohust/'
+uci -q get mentohust.default.dhcpscript >/dev/null || uci set mentohust.default.dhcpscript='udhcpc -i eth0 -q'
+uci -q commit mentohust
+
+uci -q batch <<-'EOF' >/dev/null
 	delete ucitrack.@mentohust[0]
 	add ucitrack mentohust
-	set ucitrack.@mentohust[-1].init=mentohust
+	set ucitrack.@mentohust[-1].init='mentohust'
 	commit ucitrack
+EOF
+
+exit 0

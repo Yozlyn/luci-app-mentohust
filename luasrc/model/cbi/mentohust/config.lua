@@ -81,6 +81,21 @@ o = s:option(Value, "version", translate("客户端版本"))
 o.default = "0.00"
 o.description = translate("客户端版本号，如果未开启客户端校验但对版本号有要求，可以在此指定，形如3.30")
 
+o = s:option(ListValue, "daemonmode", translate("后台运行"))
+o:value("0", translate("否"))
+o:value("1", translate("是"))
+o.default = "0"
+o.description = translate("是否以后台方式运行 MentoHUST")
+
+o = s:option(Value, "shownotify", translate("通知级别"))
+o.default = "0"
+o.description = translate("是否显示通知，0 表示关闭，1~20 表示启用不同级别通知")
+
+o = s:option(Value, "datafile", translate("认证数据目录"))
+o.default = "/etc/mentohust/"
+o.description = translate("认证数据文件目录")
+o.rmempty = false
+
 o = s:option(Value, "dhcpscript", translate("DHCP脚本命令"))
 o.default = "udhcpc -i eth0 -q"
 o.description = translate("指定执行 DHCP 的命令。其中的网卡接口请与上方的 '认证网卡' 保持一致。")
@@ -92,22 +107,33 @@ m.on_after_commit = function(self)
     local username = uci:get("mentohust", "default", "username")
     if not username or username == "" then return end
 
+    local function get_value(key, default)
+        local val = uci:get("mentohust", "default", key)
+        if val == nil or val == "" then
+            return default or ""
+        end
+        return val
+    end
+
     local mappings = {
-        { "username",     "Username",     "用户名" },
-        { "password",     "Password",     "明文密码" },
-        { "nic",          "Nic",          "网卡" },
-        { "ip",           "IP",           "IP地址" },
-        { "mask",         "Mask",         "子网掩码" },
-        { "gateway",      "Gateway",      "网关" },
-        { "dns",          "DNS",          "DNS服务器" },
-        { "pinghost",     "PingHost",     "Ping主机" },
-        { "timeout",      "Timeout",      "超时时间" },
-        { "echointerval", "EchoInterval", "心跳间隔" },
-        { "restartwait",  "RestartWait",  "失败等待" },
-        { "startmode",    "StartMode",    "组播模式" },
-        { "dhcpmode",     "DhcpMode",     "DHCP方式" },
-        { "version",      "Version",      "客户端版本" },
-        { "dhcpscript",   "DhcpScript",   "DHCP脚本" }
+        { "username",     "Username",     "用户名",       "" },
+        { "password",     "Password",     "明文密码",     "" },
+        { "nic",          "Nic",          "网卡",         "eth0" },
+        { "ip",           "IP",           "IP地址",       "0.0.0.0" },
+        { "mask",         "Mask",         "子网掩码",     "0.0.0.0" },
+        { "gateway",      "Gateway",      "网关",         "0.0.0.0" },
+        { "dns",          "DNS",          "DNS服务器",    "0.0.0.0" },
+        { "pinghost",     "PingHost",     "Ping主机",     "0.0.0.0" },
+        { "timeout",      "Timeout",      "超时时间",     "8" },
+        { "echointerval", "EchoInterval", "心跳间隔",     "30" },
+        { "restartwait",  "RestartWait",  "失败等待",     "15" },
+        { "startmode",    "StartMode",    "组播模式",     "0" },
+        { "dhcpmode",     "DhcpMode",     "DHCP方式",     "1" },
+        { "daemonmode",   "DaemonMode",   "后台运行",     "0" },
+        { "shownotify",   "ShowNotify",   "通知级别",     "0" },
+        { "version",      "Version",      "客户端版本",   "0.00" },
+        { "datafile",     "DataFile",     "认证数据文件", "/etc/mentohust/" },
+        { "dhcpscript",   "DhcpScript",   "DHCP脚本",     "udhcpc -i eth0 -q" }
     }
 
     local content = {}
@@ -119,16 +145,14 @@ m.on_after_commit = function(self)
         local uci_key = map[1]
         local conf_key = map[2]
         local comment = map[3]
-        local val = uci:get("mentohust", "default", uci_key) or ""
+        local default = map[4]
+        local val = get_value(uci_key, default)
         
         table.insert(content, ";" .. comment)
         table.insert(content, conf_key .. "=" .. val)
     end
     
     table.insert(content, "EncodePass=") 
-    table.insert(content, "DaemonMode=0")
-    table.insert(content, "ShowNotify=0")
-    table.insert(content, "DataFile=/etc/mentohust/")
 
     local f = io.open("/etc/mentohust.conf", "w")
     if f then

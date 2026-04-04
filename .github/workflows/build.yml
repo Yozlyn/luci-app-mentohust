@@ -18,14 +18,31 @@ on:
         type: string
         default: ''
 
+concurrency:
+  group: build-${{ github.ref }}
+  cancel-in-progress: true
+
+permissions:
+  contents: write
+
+env:
+  PACKAGE_NAME: luci-app-mentohust
+  SDK_NAME: openwrt-sdk-23.05.5-x86-64_gcc-12.3.0_musl.Linux-x86_64
+  SDK_ARCHIVE: openwrt-sdk.tar.xz
+  SDK_URL: https://downloads.openwrt.org/releases/23.05.5/targets/x86/64/openwrt-sdk-23.05.5-x86-64_gcc-12.3.0_musl.Linux-x86_64.tar.xz
+
 jobs:
   build:
     name: Build package
     runs-on: ubuntu-latest
+
+    defaults:
+      run:
+        shell: bash
     
     steps:
     - name: Checkout source
-      uses: actions/checkout@v4
+      uses: actions/checkout@v5
 
     - name: Prepare environment
       run: |
@@ -34,31 +51,40 @@ jobs:
 
     - name: Cache SDK archive
       id: cache-sdk
-      uses: actions/cache@v4
+      uses: actions/cache@v5
       with:
-        path: openwrt-sdk.tar.xz
-        key: openwrt-sdk-23.05.5-x86-64
+        path: ${{ env.SDK_ARCHIVE }}
+        key: ${{ runner.os }}-${{ env.SDK_NAME }}-archive
 
     - name: Download OpenWrt SDK
       if: steps.cache-sdk.outputs.cache-hit != 'true'
       run: |
         echo "Cache miss, downloading SDK"
-        wget -O openwrt-sdk.tar.xz https://downloads.openwrt.org/releases/23.05.5/targets/x86/64/openwrt-sdk-23.05.5-x86-64_gcc-12.3.0_musl.Linux-x86_64.tar.xz
+        wget -O "$SDK_ARCHIVE" "$SDK_URL"
 
     - name: Extract SDK
       run: |
         mkdir sdk
-        tar -xf openwrt-sdk.tar.xz -C sdk --strip-components=1
+        tar -xf "$SDK_ARCHIVE" -C sdk --strip-components=1
         echo "SDK is ready"
+
+    - name: Cache OpenWrt downloads
+      uses: actions/cache@v5
+      with:
+        path: sdk/dl
+        key: ${{ runner.os }}-${{ env.SDK_NAME }}-dl
+        restore-keys: |
+          ${{ runner.os }}-${{ env.SDK_NAME }}-
 
     - name: Prepare feeds and package
       run: |
         cd sdk
-        ./scripts/feeds update -a
-        ./scripts/feeds install -a
+        ./scripts/feeds update luci packages
+        ./scripts/feeds install luci-base mentohust
         
-        mkdir -p package/luci-app-mentohust
-        cp -r ../Makefile ../luasrc ../root package/luci-app-mentohust/
+        rm -rf "package/$PACKAGE_NAME"
+        mkdir -p "package/$PACKAGE_NAME"
+        cp -r ../Makefile ../luasrc ../root "package/$PACKAGE_NAME/"
         
         make defconfig
 
@@ -68,7 +94,7 @@ jobs:
         cd sdk
         echo "Start compiling package"
         set -o pipefail
-        make package/luci-app-mentohust/compile V=s -j$(nproc) 2>&1 | tee build.log || {
+        make "package/$PACKAGE_NAME/compile" V=s -j$(nproc) 2>&1 | tee build.log || {
           echo "Package compilation failed"
           exit 1
         }
@@ -77,7 +103,7 @@ jobs:
       id: find_ipk
       if: success()
       run: |
-        IPK_FILE=$(find sdk/bin/packages/ -name "luci-app-mentohust*.ipk" | head -n 1)
+        IPK_FILE=$(find sdk/bin/packages/ -name "$PACKAGE_NAME*.ipk" | head -n 1)
         if [ -z "$IPK_FILE" ]; then
           echo "Error: IPK file not found!"
           find sdk/bin/ -name "*.ipk"
@@ -96,7 +122,7 @@ jobs:
           VERSION="${MAKEFILE_VERSION}-dev-$(date +%Y%m%d)"
         fi
         
-        NEW_NAME="luci-app-mentohust_all_${VERSION}.ipk"
+        NEW_NAME="${PACKAGE_NAME}_all_${VERSION}.ipk"
         NEW_PATH="$(dirname $IPK_FILE)/$NEW_NAME"
         
         cp "$IPK_FILE" "$NEW_PATH"
@@ -111,15 +137,15 @@ jobs:
 
     - name: Upload package artifact
       if: success()
-      uses: actions/upload-artifact@v4
+      uses: actions/upload-artifact@v6
       with:
-        name: luci-app-mentohust-${{ steps.find_ipk.outputs.version }}
+        name: ${{ env.PACKAGE_NAME }}-${{ steps.find_ipk.outputs.version }}
         path: ${{ steps.find_ipk.outputs.ipk_file }}
         compression-level: 0
 
     - name: Upload build logs
       if: always() 
-      uses: actions/upload-artifact@v4
+      uses: actions/upload-artifact@v6
       with:
         name: build-logs
         path: |

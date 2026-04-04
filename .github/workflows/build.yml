@@ -27,9 +27,9 @@ permissions:
 
 env:
   PACKAGE_NAME: luci-app-mentohust
-  SDK_NAME: openwrt-sdk-23.05.5-x86-64_gcc-12.3.0_musl.Linux-x86_64
+  SDK_NAME: openwrt-sdk-23.05.5-mediatek-filogic_gcc-12.3.0_musl.Linux-x86_64
   SDK_ARCHIVE: openwrt-sdk.tar.xz
-  SDK_URL: https://downloads.openwrt.org/releases/23.05.5/targets/x86/64/openwrt-sdk-23.05.5-x86-64_gcc-12.3.0_musl.Linux-x86_64.tar.xz
+  SDK_URL: https://downloads.openwrt.org/releases/23.05.5/targets/mediatek/filogic/openwrt-sdk-23.05.5-mediatek-filogic_gcc-12.3.0_musl.Linux-x86_64.tar.xz
 
 jobs:
   build:
@@ -150,6 +150,7 @@ jobs:
         path: |
           sdk/build.log
           sdk/.config
+        if-no-files-found: ignore
         retention-days: 3
 
     - name: Publish release on tag push

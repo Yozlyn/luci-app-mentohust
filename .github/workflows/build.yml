@@ -79,12 +79,12 @@ jobs:
     - name: Prepare feeds and package
       run: |
         cd sdk
-        ./scripts/feeds update luci packages
-        ./scripts/feeds install luci-base mentohust
+        ./scripts/feeds update -a
+        ./scripts/feeds install -a
         
         rm -rf "package/$PACKAGE_NAME"
         mkdir -p "package/$PACKAGE_NAME"
-        cp -r ../Makefile ../luasrc ../root "package/$PACKAGE_NAME/"
+        cp -r ../Makefile ../luasrc ../root ../mentohust_0.3.1-r1_aarch64_cortex-a53.ipk "package/$PACKAGE_NAME/"
         
         make defconfig
 
@@ -113,7 +113,6 @@ jobs:
         PKG_VERSION=$(grep "^PKG_VERSION:=" Makefile | cut -d'=' -f2)
         PKG_RELEASE=$(grep "^PKG_RELEASE:=" Makefile | cut -d'=' -f2)
         MAKEFILE_VERSION="${PKG_VERSION}-${PKG_RELEASE}"
-        
         if [ "${{ github.event_name }}" == "workflow_dispatch" ] && [ -n "${{ inputs.release_tag }}" ]; then
           VERSION="${{ inputs.release_tag }}"
         elif [[ "${{ github.ref }}" == refs/tags/* ]]; then
@@ -122,7 +121,7 @@ jobs:
           VERSION="${MAKEFILE_VERSION}-dev-$(date +%Y%m%d)"
         fi
         
-        NEW_NAME="${PACKAGE_NAME}_all_${VERSION}.ipk"
+        NEW_NAME="${PACKAGE_NAME}_${VERSION}_aarch64_cortex-a53.ipk"
         NEW_PATH="$(dirname $IPK_FILE)/$NEW_NAME"
         
         cp "$IPK_FILE" "$NEW_PATH"

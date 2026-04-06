@@ -2,7 +2,7 @@ include $(TOPDIR)/rules.mk
 
 PKG_NAME:=luci-app-mentohust
 PKG_VERSION:=2.0.2
-PKG_RELEASE:=1
+PKG_RELEASE:=2
 BUNDLED_MENTOHUST_IPK:=/usr/share/luci-app-mentohust/mentohust_0.3.1-r1_aarch64_cortex-a53.ipk
 
 PKG_LICENSE:=MIT
@@ -32,10 +32,7 @@ define Package/luci-app-mentohust/postinst
 #!/bin/sh
 if [ -z "$${IPKG_INSTROOT}" ]; then
 	chmod 755 /etc/init.d/mentohust
-
-	if ! opkg status mentohust >/dev/null 2>&1; then
-		/usr/libexec/luci-app-mentohust/install-bundled-mentohust.sh >/tmp/luci-app-mentohust-install.log 2>&1 &
-	fi
+	/usr/libexec/luci-app-mentohust/install-bundled-mentohust.sh >/tmp/luci-app-mentohust-install.log 2>&1 &
 fi
 exit 0
 endef

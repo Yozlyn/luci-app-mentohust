@@ -22,8 +22,10 @@ endef
 define Package/luci-app-mentohust/install
 	$(call Package/luci-app-mentohust/install/default,$(1))
 	$(INSTALL_DIR) $(1)/etc/init.d
+	$(INSTALL_DIR) $(1)/usr/libexec/luci-app-mentohust
 	$(INSTALL_DIR) $(1)/usr/share/luci-app-mentohust
 	$(INSTALL_BIN) ./root/etc/init.d/mentohust $(1)/etc/init.d/mentohust
+	$(INSTALL_BIN) ./root/usr/libexec/luci-app-mentohust/install-bundled-mentohust.sh $(1)/usr/libexec/luci-app-mentohust/install-bundled-mentohust.sh
 	$(INSTALL_CONF) ./root/etc/mentohust.conf $(1)/etc/mentohust.conf
 	$(INSTALL_DATA) ./$(BUNDLED_MENTOHUST_IPK) $(1)/usr/share/luci-app-mentohust/$(BUNDLED_MENTOHUST_IPK)
 endef
@@ -31,14 +33,10 @@ endef
 define Package/luci-app-mentohust/postinst
 #!/bin/sh
 if [ -z "$${IPKG_INSTROOT}" ]; then
-	BUNDLED_IPK="/usr/share/luci-app-mentohust/$(BUNDLED_MENTOHUST_IPK)"
-	MARKER="/usr/share/luci-app-mentohust/.bundled-mentohust-installed"
-
 	chmod 755 /etc/init.d/mentohust
 
 	if ! opkg status mentohust >/dev/null 2>&1; then
-		opkg install "$${BUNDLED_IPK}" || exit 1
-		touch "$${MARKER}"
+		/usr/libexec/luci-app-mentohust/install-bundled-mentohust.sh >/tmp/luci-app-mentohust-install.log 2>&1 &
 	fi
 fi
 exit 0

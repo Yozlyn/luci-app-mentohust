@@ -84,7 +84,7 @@ jobs:
         
         rm -rf "package/$PACKAGE_NAME"
         mkdir -p "package/$PACKAGE_NAME"
-        cp -r ../Makefile ../luasrc ../root ../mentohust_0.3.1-r1_aarch64_cortex-a53.ipk "package/$PACKAGE_NAME/"
+        cp -r ../Makefile ../luasrc ../root "package/$PACKAGE_NAME/"
         
         make defconfig
 

@@ -3,7 +3,7 @@ include $(TOPDIR)/rules.mk
 PKG_NAME:=luci-app-mentohust
 PKG_VERSION:=2.0.2
 PKG_RELEASE:=1
-BUNDLED_MENTOHUST_IPK:=mentohust_0.3.1-r1_aarch64_cortex-a53.ipk
+BUNDLED_MENTOHUST_IPK:=/usr/share/luci-app-mentohust/mentohust_0.3.1-r1_aarch64_cortex-a53.ipk
 
 PKG_LICENSE:=MIT
 PKG_MAINTAINER:=Yozlyn
@@ -23,11 +23,9 @@ define Package/luci-app-mentohust/install
 	$(call Package/luci-app-mentohust/install/default,$(1))
 	$(INSTALL_DIR) $(1)/etc/init.d
 	$(INSTALL_DIR) $(1)/usr/libexec/luci-app-mentohust
-	$(INSTALL_DIR) $(1)/usr/share/luci-app-mentohust
 	$(INSTALL_BIN) ./root/etc/init.d/mentohust $(1)/etc/init.d/mentohust
 	$(INSTALL_BIN) ./root/usr/libexec/luci-app-mentohust/install-bundled-mentohust.sh $(1)/usr/libexec/luci-app-mentohust/install-bundled-mentohust.sh
 	$(INSTALL_CONF) ./root/etc/mentohust.conf $(1)/etc/mentohust.conf
-	$(INSTALL_DATA) ./$(BUNDLED_MENTOHUST_IPK) $(1)/usr/share/luci-app-mentohust/$(BUNDLED_MENTOHUST_IPK)
 endef
 
 define Package/luci-app-mentohust/postinst

@@ -1,6 +1,10 @@
 /bin/
 /obj/
 /tmp/
+/.cache/
+*.log
+/dist/
+/sdk/
 *.ipk
 !root/usr/share/luci-app-mentohust/mentohust_0.3.1-r1_aarch64_cortex-a53.ipk
 .DS_Store

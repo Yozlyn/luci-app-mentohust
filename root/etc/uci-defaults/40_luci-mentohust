@@ -15,7 +15,7 @@ uci -q get mentohust.default.echointerval >/dev/null || uci set mentohust.defaul
 uci -q get mentohust.default.restartwait >/dev/null || uci set mentohust.default.restartwait='15'
 uci -q get mentohust.default.startmode >/dev/null || uci set mentohust.default.startmode='0'
 uci -q get mentohust.default.dhcpmode >/dev/null || uci set mentohust.default.dhcpmode='1'
-uci -q get mentohust.default.daemonmode >/dev/null || uci set mentohust.default.daemonmode='0'
+uci -q get mentohust.default.daemonmode >/dev/null || uci set mentohust.default.daemonmode='3'
 uci -q get mentohust.default.shownotify >/dev/null || uci set mentohust.default.shownotify='0'
 uci -q get mentohust.default.version >/dev/null || uci set mentohust.default.version='0.00'
 uci -q get mentohust.default.datafile >/dev/null || uci set mentohust.default.datafile='/etc/mentohust/'

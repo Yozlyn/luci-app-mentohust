@@ -2,14 +2,14 @@ module("luci.controller.mentohust", package.seeall)
 
 function index()
     entry({"admin", "services", "mentohust"}, 
-          alias("admin", "services", "mentohust", "status"), 
+          alias("admin", "services", "mentohust", "config"), 
           _("MentoHUST"), 60).dependent = false
-    
-    entry({"admin", "services", "mentohust", "status"}, 
-          template("mentohust/status"), _("运行状态"), 1)
 
     entry({"admin", "services", "mentohust", "config"}, 
-          cbi("mentohust/config"), _("参数设置"), 2)
+          cbi("mentohust/config"), _("参数设置"), 1)
+
+    entry({"admin", "services", "mentohust", "status"}, 
+          template("mentohust/status"), _("运行状态"), 2)
     
     entry({"admin", "services", "mentohust", "get_log"}, call("action_get_log"))
     entry({"admin", "services", "mentohust", "get_status"}, call("action_get_status"))
@@ -24,10 +24,13 @@ function action_get_log()
 end
 
 function action_get_status()
-    local running = luci.sys.call("pgrep mentohust >/dev/null") == 0
+    local uci = require("luci.model.uci").cursor()
+    local running = luci.sys.call("pgrep -f '/usr/sbin/mentohust' >/dev/null") == 0
     local enabled = luci.sys.init.enabled("mentohust")
+    local username = uci:get("mentohust", "default", "username") or ""
+    local configured = username:match("%S") ~= nil
     luci.http.prepare_content("application/json")
-    luci.http.write_json({running = running, enabled = enabled})
+    luci.http.write_json({running = running, enabled = enabled, configured = configured})
 end
 
 function action_service()

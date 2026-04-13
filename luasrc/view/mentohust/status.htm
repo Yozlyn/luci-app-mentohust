@@ -1,120 +1,192 @@
 <%+header%>
 <style>
-.mentohust-log {
-    background-color: #1e1e1e;
-    color: #d4d4d4;
-    padding: 10px;
-    border-radius: 3px;
-    font-family: Consolas, Menlo, Monaco, "Courier New", monospace;
-    font-size: 12px;
-    line-height: 1.5;
-    white-space: pre-wrap;
-    word-wrap: break-word;
-    height: 450px;
-    overflow-y: scroll;
-    border: 1px solid #444;
+.mentohust-overview {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0;
+    margin: 10px 0 6px;
+    align-items: stretch;
 }
-.status-indicator {
-    display: inline-block;
-    width: 12px;
-    height: 12px;
-    border-radius: 50%;
-    margin-right: 5px;
-    vertical-align: middle;
+
+.mentohust-overview::after {
+    content: "";
+    order: 2;
+    width: 1px;
+    align-self: stretch;
+    margin: 0 16px;
+    background: linear-gradient(to bottom, rgba(0, 0, 0, 0), rgba(180, 180, 180, 0.85), rgba(0, 0, 0, 0));
 }
-.status-green { background-color: #4caf50; box-shadow: 0 0 5px #4caf50; }
-.status-red { background-color: #f44336; box-shadow: 0 0 5px #f44336; }
+
+.mentohust-panel {
+    min-width: 220px;
+    flex: 1 1 0;
+    padding: 8px 18px 10px;
+    background: transparent;
+    box-sizing: border-box;
+}
+
+.mentohust-panel:first-child {
+    order: 1;
+    padding-left: 14px;
+}
+
+.mentohust-panel:last-child {
+    order: 3;
+    padding-right: 18px;
+}
+
+.mentohust-panel-label {
+    margin-bottom: 4px;
+    color: #666;
+}
+
+.mentohust-panel-value {
+    font-size: 16px;
+    font-weight: 600;
+}
+
+.mentohust-panel-value.text-only {
+    display: block;
+}
+
+@media (max-width: 640px) {
+    .mentohust-overview {
+        flex-direction: column;
+    }
+
+    .mentohust-overview::after {
+        width: auto;
+        height: 1px;
+        margin: 4px 0;
+        background: linear-gradient(to right, rgba(0, 0, 0, 0), rgba(180, 180, 180, 0.85), rgba(0, 0, 0, 0));
+    }
+
+    .mentohust-panel:first-child,
+    .mentohust-panel:last-child {
+        padding-left: 0;
+        padding-right: 0;
+    }
+
+    .mentohust-actions {
+        padding-left: 0;
+    }
+}
+
+.mentohust-actions {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 10px;
+    margin-top: 8px;
+    padding-left: 12px;
+}
+
+.mentohust-actions .cbi-button {
+    min-width: 110px;
+}
 
 .cbi-button-clear {
-    background-color: #e7604a; 
+    background-color: #e7604a;
     color: #fff;
     border: 1px solid #d44a36;
 }
+
 .cbi-button-clear:hover {
     background-color: #d44a36;
 }
-.cbi-button-row {
-    display: flex;
-    gap: 10px;
-    padding: 10px 0;
-    align-items: center;
+
+.mentohust-log-wrap {
+    margin-top: 20px;
+}
+
+.mentohust-log {
+    width: 100%;
+    min-height: 420px;
+    padding: 10px;
+    border: 1px solid #d9d9d9;
+    background: #1f1f1f;
+    color: #d7d7d7;
+    font-family: Consolas, Menlo, Monaco, "Courier New", monospace;
+    font-size: 12px;
+    line-height: 1.55;
+    white-space: pre-wrap;
+    word-break: break-word;
+    box-sizing: border-box;
+    resize: vertical;
+}
+
+.mentohust-log-note {
+    margin-top: 6px;
+    color: #666;
+    text-align: right;
 }
 </style>
 <h2 name="content"><%:MentoHUST 802.1x 认证%></h2>
 <div class="cbi-map">
     <fieldset class="cbi-section">
-        <legend><%:运行状态%></legend>
+        <legend><%:运行概览%></legend>
         <div class="cbi-section-node">
-            <div class="cbi-value">
-                <label class="cbi-value-title"><%:服务状态%></label>
-                <div class="cbi-value-field">
-                    <span id="status_icon" class="status-indicator" style="background-color: #ccc;"></span>
-                    <span id="status_text" style="font-weight: bold; vertical-align: middle;"><%:检测中...%></span>
+            <p><%:展示当前服务状态，当前页面会自动刷新。%></p>
+            <div class="mentohust-summary">
+                <div class="mentohust-overview">
+                    <div class="mentohust-panel">
+                        <div class="mentohust-panel-label"><%:服务状态%></div>
+                        <div id="status_text" class="mentohust-panel-value"><%:检测中...%></div>
+                    </div>
+                    <div class="mentohust-panel">
+                        <div class="mentohust-panel-label"><%:开机自启%></div>
+                        <div id="enabled_text" class="mentohust-panel-value text-only"><%:检测中...%></div>
+                    </div>
+                </div>
+                <div class="mentohust-actions">
+                    <button type="button" class="cbi-button cbi-button-reset" onclick="action('stop')"><%:停止服务%></button>
+                    <button type="button" class="cbi-button cbi-button-reload" onclick="action('restart')"><%:重启服务%></button>
+                    <button type="button" class="cbi-button cbi-button-clear" onclick="clearLog()"><%:清除日志%></button>
+                    <button type="button" class="cbi-button cbi-button-link" onclick="updateLog()"><%:刷新日志%></button>
                 </div>
             </div>
-            <div class="cbi-value cbi-value-last">
-                <label class="cbi-value-title"><%:开机自启%></label>
-                <div class="cbi-value-field">
-                    <span id="enabled_text"><%:检测中...%></span>
-                </div>
-            </div>
-        </div>
-    </fieldset>
-    <fieldset class="cbi-section">
-        <legend><%:服务控制%></legend>
-        <div class="cbi-section-node">
-            <div class="cbi-button-row">
-                <button type="button" class="cbi-button cbi-button-reset" onclick="action('stop')"><%:停止服务%></button>
-                <button type="button" class="cbi-button cbi-button-reload" onclick="action('restart')"><%:重启服务%></button>
-                <button type="button" class="cbi-button cbi-button-clear" onclick="clearLog()"><%:清除日志%></button>
-                <button type="button" class="cbi-button cbi-button-link" onclick="updateLog()"><%:刷新日志%></button>
-            </div>
-        </div>
-    </fieldset>
-    <fieldset class="cbi-section">
-        <legend>
-            <%:实时日志%> 
-        </legend>
-        <div class="cbi-section-node">
-            <textarea id="log_area" class="mentohust-log" readonly><%:正在加载日志...%></textarea>
-            <div style="margin-top: 5px; text-align: right; color: #888; font-size: 0.8em;">
-                <%:仅显示最后 100 行运行日志 (From /tmp/mentohust.log)%>
+            <div class="mentohust-log-wrap">
+                <textarea id="log_area" class="mentohust-log" readonly><%:正在加载日志...%></textarea>
+                <div class="mentohust-log-note"><%:当前仅显示日志 /tmp/mentohust.log 的最后 100 行。%></div>
             </div>
         </div>
     </fieldset>
 </div>
 <script type="text/javascript">//<![CDATA[
-    var statusIcon = document.getElementById('status_icon');
     var statusText = document.getElementById('status_text');
     var enabledText = document.getElementById('enabled_text');
     var logArea = document.getElementById('log_area');
-    function getTs() { return '?t=' + Math.random(); }
-    
-    // 状态更新
+
+    function getTs() {
+        return '?t=' + Math.random();
+    }
+
     function updateStatus() {
         XHR.get('<%=url("admin/services/mentohust/get_status")%>' + getTs(), null, function(x, data) {
-            if (data) {
-                if (data.running) {
-                    statusIcon.className = 'status-indicator status-green';
-                    statusText.innerHTML = '<%:运行中 (Running)%>';
-                    statusText.style.color = '#4caf50';
-                } else {
-                    statusIcon.className = 'status-indicator status-red';
-                    statusText.innerHTML = '<%:已停止 (Stopped)%>';
-                    statusText.style.color = '#f44336';
-                }
-                if (data.enabled) {
-                    enabledText.innerHTML = '<span style="color:green;font-weight:bold"><%:已启用 (Enabled)%></span>';
-                } else {
-                    enabledText.innerHTML = '<span style="color:red"><%:未启用 (Disabled)%></span>';
-                }
+            if (!data) {
+                return;
+            }
+
+            if (!data.configured) {
+                statusText.innerHTML = '<%:请配置账号%>';
+                statusText.style.color = '#d08a00';
+            } else if (data.running) {
+                statusText.innerHTML = '<%:运行中%>';
+                statusText.style.color = '#4caf50';
+            } else {
+                statusText.innerHTML = '<%:已停止%>';
+                statusText.style.color = '#f44336';
+            }
+
+            if (data.enabled) {
+                enabledText.innerHTML = '<span style="color:green;font-weight:bold"><%:已启用%></span>';
+            } else {
+                enabledText.innerHTML = '<span style="color:red"><%:未启用%></span>';
             }
         });
     }
 
-    // 日志更新
     function updateLog() {
-        XHR.get('<%=url("admin/services/mentohust/get_log")%>' + getTs(), null, function(x, data) {
+        XHR.get('<%=url("admin/services/mentohust/get_log")%>' + getTs(), null, function(x) {
             if (x.responseText) {
                 if (logArea.value !== x.responseText) {
                     logArea.value = x.responseText;
@@ -125,37 +197,30 @@
             }
         });
     }
-    
-    // 服务操作
+
     function action(act) {
-        if (act === 'stop') console.log("Attempting to stop MentoHUST service.");
-        
         if (act === 'restart') {
             statusText.innerHTML = '<%:重启中...%>';
             statusText.style.color = '#e6a23c';
-            statusIcon.style.backgroundColor = '#e6a23c';
         }
 
         XHR.post('<%=url("admin/services/mentohust/service_action")%>' + getTs(), {action: act}, function(x, data) {
             if (data && data.success) {
-                console.log('Service action "' + act + '" successful.');
-                setTimeout(function() { updateStatus(); updateLog(); }, 1500);
+                setTimeout(function() {
+                    updateStatus();
+                    updateLog();
+                }, 1500);
             } else {
-                console.error('Service action "' + act + '" failed.');
                 updateStatus();
             }
         });
     }
 
-    // 清除日志
     function clearLog() {
-        console.log("Attempting to clear MentoHUST log.");
         XHR.post('<%=url("admin/services/mentohust/clear_log")%>' + getTs(), {}, function(x, data) {
             if (data && data.success) {
-                console.log('Log cleared successfully.');
                 updateLog();
             } else {
-                console.error('Failed to clear log.');
                 updateLog();
             }
         });
@@ -163,7 +228,9 @@
 
     updateStatus();
     updateLog();
-
-    window.setInterval(function() { updateStatus(); updateLog(); }, 3000);
+    window.setInterval(function() {
+        updateStatus();
+        updateLog();
+    }, 3000);
 //]]></script>
 <%+footer%>
